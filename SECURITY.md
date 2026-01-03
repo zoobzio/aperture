@@ -11,7 +11,7 @@ We release patches for security vulnerabilities. Which versions are eligible for
 
 ## Reporting a Vulnerability
 
-We take the security of pipz seriously. If you have discovered a security vulnerability in this project, please report it responsibly.
+We take the security of aperture seriously. If you have discovered a security vulnerability in this project, please report it responsibly.
 
 ### How to Report
 
@@ -20,7 +20,7 @@ We take the security of pipz seriously. If you have discovered a security vulner
 Instead, please report them via one of the following methods:
 
 1. **GitHub Security Advisories** (Preferred)
-   - Go to the [Security tab](https://github.com/zoobzio/pipz/security) of this repository
+   - Go to the [Security tab](https://github.com/zoobzio/aperture/security) of this repository
    - Click "Report a vulnerability"
    - Fill out the form with details about the vulnerability
 
@@ -54,11 +54,11 @@ We prefer all communications to be in English.
 
 ## Security Best Practices
 
-When using pipz in your applications, we recommend:
+When using aperture in your applications, we recommend:
 
 1. **Keep Dependencies Updated**
    ```bash
-   go get -u github.com/zoobzio/pipz
+   go get -u github.com/zoobzio/aperture
    ```
 
 2. **Use Context Properly**
@@ -80,7 +80,7 @@ When using pipz in your applications, we recommend:
 
 ## Security Features
 
-pipz includes several built-in security features:
+aperture includes several built-in security features:
 
 - **Type Safety**: Generic types prevent type confusion attacks
 - **Context Support**: Built-in cancellation and timeout support

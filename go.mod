@@ -2,6 +2,8 @@ module github.com/zoobzio/aperture
 
 go 1.24.5
 
+toolchain go1.25.0
+
 require (
 	github.com/zoobzio/capitan v0.1.0
 	go.opentelemetry.io/otel v1.38.0

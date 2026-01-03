@@ -13,7 +13,7 @@ Config-driven bridge from [capitan](https://github.com/zoobzio/capitan) events t
 
 Emit a capitan event, aperture transforms it into OTEL logs, metrics, and traces. Define your signals in code, configure observability in YAML, change what's observed at runtime without recompiling.
 
-## Simple API
+## Config-Driven Bridge
 
 ```go
 // Create aperture with your OTEL providers

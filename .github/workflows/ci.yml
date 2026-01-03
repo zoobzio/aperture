@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.25"
 
 jobs:
   test:
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ["1.24"]
+        go-version: ["1.24", "1.25"]
     steps:
     - uses: actions/checkout@v4
 
@@ -36,7 +36,7 @@ jobs:
       run: go mod download
 
     - name: Run tests with race detection
-      run: go test -v -race -timeout=5m ./...
+      run: make test
 
   bench:
     name: Benchmarks
@@ -62,7 +62,7 @@ jobs:
       run: go mod download
 
     - name: Run benchmarks
-      run: go test -bench=. -benchmem -benchtime=1s ./... | tee benchmark-results.txt
+      run: make test-bench 2>&1 | tee benchmark-results.txt
 
     - name: Upload benchmark results
       uses: actions/upload-artifact@v4
@@ -120,7 +120,7 @@ jobs:
       run: go mod download
 
     - name: Generate coverage report
-      run: go test -coverprofile=coverage.out ./...
+      run: make coverage
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
