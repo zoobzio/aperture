@@ -5,7 +5,7 @@ go 1.24.5
 toolchain go1.25.0
 
 require (
-	github.com/zoobzio/capitan v0.1.0
+	github.com/zoobzio/capitan v1.0.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.38.0

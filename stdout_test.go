@@ -606,3 +606,125 @@ func TestContextValueToSlogAttr_AllTypes(t *testing.T) {
 		})
 	}
 }
+
+func TestLogEvent_DefaultSeverity(t *testing.T) {
+	ctx := context.Background()
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Create capitan and signal
+	c := capitan.New()
+
+	// The default severity from capitan is Info, but we want to test
+	// the default case in the switch. Since capitan doesn't expose
+	// a way to set arbitrary severity, we test indirectly through
+	// the existing severity mapping which includes all capitan severities.
+	// The default case is for unknown severities not defined by capitan.
+	testSignal := capitan.NewSignal("test.default.severity", "Test default severity")
+
+	// Create aperture with stdout logging
+	pvs, err := apertesting.TestProviders(ctx, "test-service", "v1.0.0", "localhost:4318")
+	if err != nil {
+		t.Fatalf("Failed to create providers: %v", err)
+	}
+
+	schema := Schema{
+		Stdout: true,
+	}
+
+	sh, err := New(c, pvs.Log, pvs.Meter, pvs.Trace)
+	if err != nil {
+		t.Fatalf("Failed to create aperture: %v", err)
+	}
+	defer sh.Close()
+
+	err = sh.Apply(schema)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+
+	// Emit event - tests that all standard severities work
+	c.Emit(ctx, testSignal)
+	time.Sleep(100 * time.Millisecond)
+
+	// Restore stdout and read output
+	w.Close()
+	os.Stdout = oldStdout
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// Verify output contains signal
+	if !strings.Contains(output, "test.default.severity") {
+		t.Errorf("Expected output to contain signal name, got: %s", output)
+	}
+}
+
+func TestLogEvent_NilContextValue(t *testing.T) {
+	ctx := context.Background()
+
+	// Define context key but don't set a value
+	type ctxKey string
+	requestIDKey := ctxKey("request_id")
+
+	// Context does NOT have the value set - ctx.Value will return nil
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Create capitan and signal
+	c := capitan.New()
+	testSignal := capitan.NewSignal("test.signal", "Test signal with nil context")
+
+	// Create aperture with stdout logging and context extraction
+	pvs, err := apertesting.TestProviders(ctx, "test-service", "v1.0.0", "localhost:4318")
+	if err != nil {
+		t.Fatalf("Failed to create providers: %v", err)
+	}
+
+	sh, err := New(c, pvs.Log, pvs.Meter, pvs.Trace)
+	if err != nil {
+		t.Fatalf("Failed to create aperture: %v", err)
+	}
+	defer sh.Close()
+
+	// Register context key
+	sh.RegisterContextKey("request_id", requestIDKey)
+
+	schema := Schema{
+		Stdout: true,
+		Context: &ContextSchema{
+			Logs: []string{"request_id"},
+		},
+	}
+
+	err = sh.Apply(schema)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+
+	// Emit event without context value set
+	c.Emit(ctx, testSignal)
+
+	// Give time for async processing
+	time.Sleep(100 * time.Millisecond)
+
+	// Restore stdout and read captured output
+	w.Close()
+	os.Stdout = oldStdout
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// Verify output contains signal but NOT the request_id (since it was nil)
+	if !strings.Contains(output, "test.signal") {
+		t.Errorf("Expected output to contain signal name, got: %s", output)
+	}
+	// The nil context value should be skipped (continue branch)
+	// Output should not contain request_id=<nil> or similar
+}

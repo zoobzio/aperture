@@ -777,3 +777,156 @@ func TestInvalidMetricType(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+func TestExtractNumericValueByName_AllTypes(t *testing.T) {
+	ctx := context.Background()
+	cap := capitan.New()
+
+	testSignal := capitan.NewSignal("test.numeric", "Test numeric extraction")
+
+	// Define keys for all numeric types
+	intKey := capitan.NewIntKey("int_val")
+	int32Key := capitan.NewInt32Key("int32_val")
+	int64Key := capitan.NewInt64Key("int64_val")
+	uintKey := capitan.NewUintKey("uint_val")
+	uint32Key := capitan.NewUint32Key("uint32_val")
+	uint64Key := capitan.NewUint64Key("uint64_val")
+	float32Key := capitan.NewFloat32Key("float32_val")
+	float64Key := capitan.NewFloat64Key("float64_val")
+	durationKey := capitan.NewDurationKey("duration_val")
+	stringKey := capitan.NewStringKey("string_val")
+
+	tests := []struct {
+		name        string
+		field       capitan.Field
+		keyName     string
+		expectNil   bool
+		expectFloat bool
+		expectInt   int64
+		expectFlt   float64
+	}{
+		{
+			name:      "int field",
+			field:     intKey.Field(42),
+			keyName:   "int_val",
+			expectInt: 42,
+		},
+		{
+			name:      "int32 field",
+			field:     int32Key.Field(int32(32)),
+			keyName:   "int32_val",
+			expectInt: 32,
+		},
+		{
+			name:      "int64 field",
+			field:     int64Key.Field(int64(64)),
+			keyName:   "int64_val",
+			expectInt: 64,
+		},
+		{
+			name:      "uint field",
+			field:     uintKey.Field(uint(100)),
+			keyName:   "uint_val",
+			expectInt: 100,
+		},
+		{
+			name:      "uint32 field",
+			field:     uint32Key.Field(uint32(200)),
+			keyName:   "uint32_val",
+			expectInt: 200,
+		},
+		{
+			name:      "uint64 field",
+			field:     uint64Key.Field(uint64(300)),
+			keyName:   "uint64_val",
+			expectInt: 300,
+		},
+		{
+			name:        "float32 field",
+			field:       float32Key.Field(float32(3.14)),
+			keyName:     "float32_val",
+			expectFloat: true,
+			expectFlt:   float64(float32(3.14)),
+		},
+		{
+			name:        "float64 field",
+			field:       float64Key.Field(6.28),
+			keyName:     "float64_val",
+			expectFloat: true,
+			expectFlt:   6.28,
+		},
+		{
+			name:        "duration field",
+			field:       durationKey.Field(500 * time.Millisecond),
+			keyName:     "duration_val",
+			expectFloat: true,
+			expectFlt:   500.0, // 500ms in milliseconds
+		},
+		{
+			name:      "non-numeric field returns nil",
+			field:     stringKey.Field("hello"),
+			keyName:   "string_val",
+			expectNil: true,
+		},
+		{
+			name:      "non-matching key returns nil",
+			field:     intKey.Field(42),
+			keyName:   "wrong_key",
+			expectNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture event with the specific field
+			var capturedEvent *capitan.Event
+			var mu sync.Mutex
+			cap.Hook(testSignal, func(ctx context.Context, e *capitan.Event) {
+				mu.Lock()
+				capturedEvent = e
+				mu.Unlock()
+			})
+
+			// Emit event with field
+			cap.Emit(ctx, testSignal, tt.field)
+			time.Sleep(50 * time.Millisecond)
+
+			mu.Lock()
+			evt := capturedEvent
+			mu.Unlock()
+
+			if evt == nil {
+				t.Fatal("event was not captured")
+			}
+
+			result := extractNumericValueByName(evt, tt.keyName)
+
+			if tt.expectNil {
+				if result != nil {
+					t.Errorf("expected nil result, got %+v", result)
+				}
+				return
+			}
+
+			if result == nil {
+				t.Fatal("expected non-nil result")
+			}
+
+			if tt.expectFloat {
+				if !result.isFloat {
+					t.Errorf("expected float result, got int")
+				}
+				if result.floatValue != tt.expectFlt {
+					t.Errorf("expected float value %f, got %f", tt.expectFlt, result.floatValue)
+				}
+			} else {
+				if result.isFloat {
+					t.Errorf("expected int result, got float")
+				}
+				if result.intValue != tt.expectInt {
+					t.Errorf("expected int value %d, got %d", tt.expectInt, result.intValue)
+				}
+			}
+		})
+	}
+}

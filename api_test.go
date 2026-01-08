@@ -371,3 +371,203 @@ func TestApply_UnregisteredContextKey(t *testing.T) {
 		t.Errorf("expected error to mention key name, got: %v", err)
 	}
 }
+
+func TestApply_UnregisteredMetricsContextKey(t *testing.T) {
+	ctx := context.Background()
+	cap := capitan.New()
+
+	pvs, err := apertesting.TestProviders(ctx, "test-service", "v1.0.0", "localhost:4318")
+	if err != nil {
+		t.Fatalf("failed to create providers: %v", err)
+	}
+	defer pvs.Shutdown(ctx)
+
+	sh, err := New(cap, pvs.Log, pvs.Meter, pvs.Trace)
+	if err != nil {
+		t.Fatalf("failed to create Aperture: %v", err)
+	}
+	defer sh.Close()
+
+	// Apply schema referencing unregistered context key in metrics
+	schema := Schema{
+		Context: &ContextSchema{
+			Metrics: []string{"unregistered_metric_key"},
+		},
+	}
+
+	err = sh.Apply(schema)
+	if err == nil {
+		t.Fatal("expected error for unregistered context key")
+	}
+	if !strings.Contains(err.Error(), "not registered") {
+		t.Errorf("expected 'not registered' error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "context.metrics") {
+		t.Errorf("expected error to mention context.metrics, got: %v", err)
+	}
+}
+
+func TestApply_UnregisteredTracesContextKey(t *testing.T) {
+	ctx := context.Background()
+	cap := capitan.New()
+
+	pvs, err := apertesting.TestProviders(ctx, "test-service", "v1.0.0", "localhost:4318")
+	if err != nil {
+		t.Fatalf("failed to create providers: %v", err)
+	}
+	defer pvs.Shutdown(ctx)
+
+	sh, err := New(cap, pvs.Log, pvs.Meter, pvs.Trace)
+	if err != nil {
+		t.Fatalf("failed to create Aperture: %v", err)
+	}
+	defer sh.Close()
+
+	// Apply schema referencing unregistered context key in traces
+	schema := Schema{
+		Context: &ContextSchema{
+			Traces: []string{"unregistered_trace_key"},
+		},
+	}
+
+	err = sh.Apply(schema)
+	if err == nil {
+		t.Fatal("expected error for unregistered context key")
+	}
+	if !strings.Contains(err.Error(), "not registered") {
+		t.Errorf("expected 'not registered' error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "context.traces") {
+		t.Errorf("expected error to mention context.traces, got: %v", err)
+	}
+}
+
+func TestApply_TraceConfig(t *testing.T) {
+	ctx := context.Background()
+	cap := capitan.New()
+
+	pvs, err := apertesting.TestProviders(ctx, "test-service", "v1.0.0", "localhost:4318")
+	if err != nil {
+		t.Fatalf("failed to create providers: %v", err)
+	}
+	defer pvs.Shutdown(ctx)
+
+	sh, err := New(cap, pvs.Log, pvs.Meter, pvs.Trace)
+	if err != nil {
+		t.Fatalf("failed to create Aperture: %v", err)
+	}
+	defer sh.Close()
+
+	// Apply schema with trace configuration
+	schema := Schema{
+		Traces: []TraceSchema{
+			{
+				Start:          "request.start",
+				End:            "request.end",
+				CorrelationKey: "request_id",
+				SpanName:       "http_request",
+				SpanTimeout:    "30s",
+			},
+		},
+	}
+
+	err = sh.Apply(schema)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+
+	// Verify trace config was set
+	if len(sh.config.Traces) != 1 {
+		t.Errorf("expected 1 trace config, got %d", len(sh.config.Traces))
+	}
+	if sh.config.Traces[0].StartSignalName != "request.start" {
+		t.Errorf("expected start signal 'request.start', got %s", sh.config.Traces[0].StartSignalName)
+	}
+	if sh.config.Traces[0].SpanTimeout != 30*time.Second {
+		t.Errorf("expected span timeout 30s, got %v", sh.config.Traces[0].SpanTimeout)
+	}
+}
+
+func TestApply_MetricsContextKeys(t *testing.T) {
+	ctx := context.Background()
+	cap := capitan.New()
+
+	pvs, err := apertesting.TestProviders(ctx, "test-service", "v1.0.0", "localhost:4318")
+	if err != nil {
+		t.Fatalf("failed to create providers: %v", err)
+	}
+	defer pvs.Shutdown(ctx)
+
+	sh, err := New(cap, pvs.Log, pvs.Meter, pvs.Trace)
+	if err != nil {
+		t.Fatalf("failed to create Aperture: %v", err)
+	}
+	defer sh.Close()
+
+	// Register context key
+	type ctxKey string
+	const tenantIDKey ctxKey = "tenant_id"
+	sh.RegisterContextKey("tenant_id", tenantIDKey)
+
+	// Apply schema with metrics context extraction
+	schema := Schema{
+		Context: &ContextSchema{
+			Metrics: []string{"tenant_id"},
+		},
+	}
+
+	err = sh.Apply(schema)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+
+	// Verify context extraction was configured for metrics
+	if sh.config.ContextExtraction == nil {
+		t.Fatal("expected ContextExtraction to be set")
+	}
+	if len(sh.config.ContextExtraction.Metrics) != 1 {
+		t.Errorf("expected 1 metrics context key, got %d", len(sh.config.ContextExtraction.Metrics))
+	}
+}
+
+func TestApply_TracesContextKeys(t *testing.T) {
+	ctx := context.Background()
+	cap := capitan.New()
+
+	pvs, err := apertesting.TestProviders(ctx, "test-service", "v1.0.0", "localhost:4318")
+	if err != nil {
+		t.Fatalf("failed to create providers: %v", err)
+	}
+	defer pvs.Shutdown(ctx)
+
+	sh, err := New(cap, pvs.Log, pvs.Meter, pvs.Trace)
+	if err != nil {
+		t.Fatalf("failed to create Aperture: %v", err)
+	}
+	defer sh.Close()
+
+	// Register context key
+	type ctxKey string
+	const userIDKey ctxKey = "user_id"
+	sh.RegisterContextKey("user_id", userIDKey)
+
+	// Apply schema with traces context extraction
+	schema := Schema{
+		Context: &ContextSchema{
+			Traces: []string{"user_id"},
+		},
+	}
+
+	err = sh.Apply(schema)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+
+	// Verify context extraction was configured for traces
+	if sh.config.ContextExtraction == nil {
+		t.Fatal("expected ContextExtraction to be set")
+	}
+	if len(sh.config.ContextExtraction.Traces) != 1 {
+		t.Errorf("expected 1 traces context key, got %d", len(sh.config.ContextExtraction.Traces))
+	}
+}

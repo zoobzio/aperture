@@ -114,6 +114,7 @@ func main() {
 ```
 
 **observability.yaml:**
+
 ```yaml
 metrics:
   - signal: order.created
@@ -146,26 +147,46 @@ logs:
 - **Trace correlation** — Pair start/end events into spans automatically
 - **JSON serialization** — Custom field types automatically serialized
 
-## Signal Transformations
+## Observability Without Instrumentation
 
-| Config | OTEL Signal | Use Case |
-|--------|-------------|----------|
-| (default) | Log record | Audit trail, debugging |
-| `type: counter` | Counter | Count occurrences |
-| `type: gauge` + `value_key` | Gauge | Current measurements |
-| `type: histogram` + `value_key` | Histogram | Latency distributions |
-| `start`/`end` pair | Trace span | Request flows |
+Aperture enables a pattern: **emit domain events, configure observability separately**.
+
+Your application code emits meaningful domain events through capitan. Aperture transforms those events into OTEL signals based on configuration. Change what's observed — add a metric, remove a trace, adjust log filtering — without touching application code.
+
+```go
+// Application code stays focused on domain logic
+capitan.Emit(ctx, orderCreated, orderID.Field(id), total.Field(amount))
+capitan.Emit(ctx, orderCompleted, orderID.Field(id), duration.Field(elapsed))
+
+// Observability is configured externally
+// → metrics, traces, logs derived from the same event stream
+```
+
+Domain events are stable. Observability requirements change. Keep them separate.
+
+## Capabilities
+
+| Feature              | Description                                                | Docs                                  |
+| -------------------- | ---------------------------------------------------------- | ------------------------------------- |
+| Log Filtering        | Whitelist signals for OTEL log records                     | [Logs](docs/3.guides/3.logs.md)       |
+| Metrics              | Counters, gauges, histograms, up/down counters from events | [Metrics](docs/3.guides/1.metrics.md) |
+| Trace Correlation    | Pair start/end events into spans automatically             | [Traces](docs/3.guides/2.traces.md)   |
+| Context Extraction   | Extract context values as span/log attributes              | [Context](docs/3.guides/4.context.md) |
+| Schema Configuration | Load observability config from YAML or JSON                | [Schema](docs/3.guides/5.schema.md)   |
+| Testing Utilities    | Mock providers and assertion helpers                       | [Testing](docs/3.guides/6.testing.md) |
 
 ## Documentation
 
 Full documentation is available in the [docs/](docs/) directory:
 
 ### Learn
+
 - [Overview](docs/1.overview.md) — Architecture and philosophy
 - [Quickstart](docs/2.learn/1.quickstart.md) — Get running in five minutes
 - [Concepts](docs/2.learn/2.concepts.md) — Core mental model
 
 ### Guides
+
 - [Metrics](docs/3.guides/1.metrics.md) — Counters, gauges, histograms, up/down counters
 - [Traces](docs/3.guides/2.traces.md) — Span correlation from event pairs
 - [Logs](docs/3.guides/3.logs.md) — Whitelist filtering
@@ -174,18 +195,17 @@ Full documentation is available in the [docs/](docs/) directory:
 - [Testing](docs/3.guides/6.testing.md) — Test utilities
 
 ### Cookbook
+
 - [HTTP Server](docs/4.cookbook/1.http-server.md) — Complete HTTP server example
 - [Background Workers](docs/4.cookbook/2.background-workers.md) — Job queue observability
 
 ### Reference
+
 - [API Reference](docs/5.reference/1.api.md) — Complete API documentation
 
 ## Contributing
 
-Contributions welcome! Please ensure:
-- Tests pass: `go test ./...`
-- Code is formatted: `go fmt ./...`
-- No lint errors: `golangci-lint run`
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 

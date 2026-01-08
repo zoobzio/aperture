@@ -3,6 +3,7 @@ package aperture
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -677,5 +678,86 @@ func TestExtractContextValuesForMetrics_AllTypes(t *testing.T) {
 	// Unsupported types are now JSON serialized
 	if _, ok := attrMap["unsupported"]; !ok {
 		t.Error("missing unsupported attribute (should be JSON serialized)")
+	}
+}
+
+func TestSafeUintToInt64(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    uint
+		expected int64
+	}{
+		{
+			name:     "zero",
+			input:    0,
+			expected: 0,
+		},
+		{
+			name:     "small value",
+			input:    42,
+			expected: 42,
+		},
+		{
+			name:     "max int64",
+			input:    uint(math.MaxInt64),
+			expected: math.MaxInt64,
+		},
+		{
+			name:     "overflow clamped to max int64",
+			input:    uint(math.MaxInt64) + 1,
+			expected: math.MaxInt64,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := safeUintToInt64(tt.input)
+			if result != tt.expected {
+				t.Errorf("safeUintToInt64(%d) = %d, want %d", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSafeUint64ToInt64(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    uint64
+		expected int64
+	}{
+		{
+			name:     "zero",
+			input:    0,
+			expected: 0,
+		},
+		{
+			name:     "small value",
+			input:    42,
+			expected: 42,
+		},
+		{
+			name:     "max int64",
+			input:    uint64(math.MaxInt64),
+			expected: math.MaxInt64,
+		},
+		{
+			name:     "overflow clamped to max int64",
+			input:    uint64(math.MaxInt64) + 1,
+			expected: math.MaxInt64,
+		},
+		{
+			name:     "max uint64 clamped to max int64",
+			input:    math.MaxUint64,
+			expected: math.MaxInt64,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := safeUint64ToInt64(tt.input)
+			if result != tt.expected {
+				t.Errorf("safeUint64ToInt64(%d) = %d, want %d", tt.input, result, tt.expected)
+			}
+		})
 	}
 }

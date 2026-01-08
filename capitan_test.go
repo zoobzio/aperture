@@ -238,3 +238,29 @@ func TestCapitanObserver_SeverityPropagation(t *testing.T) {
 
 	// Severity mapping is tested directly in TestSeverityToOTEL
 }
+
+func TestCapitanObserver_DrainNilObserver(t *testing.T) {
+	ctx := context.Background()
+
+	// Create a capitanObserver with nil observer field
+	co := &capitanObserver{
+		observer: nil,
+	}
+
+	// Drain should return nil when observer is nil
+	err := co.Drain(ctx)
+	if err != nil {
+		t.Errorf("expected nil error, got: %v", err)
+	}
+}
+
+func TestCapitanObserver_CloseNilObserver(t *testing.T) {
+	// Create a capitanObserver with nil observer and tracesHandler
+	co := &capitanObserver{
+		observer:      nil,
+		tracesHandler: nil,
+	}
+
+	// Close should not panic when observer and tracesHandler are nil
+	co.Close()
+}
